@@ -4,86 +4,9 @@
     <title>Register</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
+    <script src="/js/registerFunc.js"></script>
 </head>
 <body>
-<script>
-    "use strict";
-
-    const isNotEmpty = function (element) {
-        return  {
-            isValid: (element.length !== 0),
-            message: 'Input is required here'
-        };
-    }
-
-    const isOnlyLetters = function (element) {
-        return  {
-            isValid: /^[a-zA-z\s]+$/.test(element),
-            message: 'Please enter letters only'
-        };
-    }
-
-    const isExist = function (element) {
-        let isExist = true;
-        document.getElementById("loadingGif").classList.remove("d-none"); //starts the loading gif
-        fetch(`/isUserExist/${element}`)
-            .then(function(response) {
-                return response.json();
-            }).then(function(data) {
-            if(data.isExist)
-                isExist = false;
-            document.getElementById("loadingGif").classList.add("d-none"); //stops the loading gif
-        })
-            .catch(function(error) {
-                console.log(error);
-            });
-
-        return  {
-            isValid: isExist,
-            message: 'This email is already in use, please choose another one'
-        };
-    }
-
-    function validateForm(){
-        let firstNameInput = document.getElementById("firstName");
-        let lastNameInput = document.getElementById("lastName");
-        let emailInput = document.getElementById("email");
-
-        firstNameInput.value = firstNameInput.value.trim();
-        lastNameInput.value = lastNameInput.value.trim();
-        emailInput.value = emailInput.value.trim();
-
-        let v = true;
-        let v1 = validateInput(firstNameInput, isNotEmpty);
-        if(v1.isValid) {
-            let v4 = validateInput(firstNameInput, isOnlyLetters);
-            v = v && v4.isValid;
-        }
-
-        let v2 = validateInput(lastNameInput, isNotEmpty)
-        if(v2.isValid) {
-            let v5 = validateInput(lastNameInput, isOnlyLetters);
-            v = v && v5.isValid;
-        }
-        v = v1.isValid && v2.isValid;
-
-        if(v){
-            let v3 = validateInput(emailInput, isExist);
-            v = v && v3.isValid;
-        }
-
-        return v;
-    };
-
-    const validateInput = (inputElement, validateFunc) => {
-        let errorElement = inputElement.nextElementSibling;
-        let v = validateFunc(inputElement.value); // call the validation function
-        errorElement.innerHTML = v.isValid ? '' : v.message; // display the error message
-        v.isValid ? inputElement.classList.remove("is-invalid") : inputElement.classList.add("is-invalid");
-        return v;
-    }
-</script>
-
 <div class="container-fluid">
     <div class="row">
         <div class="col-4"></div>
@@ -91,38 +14,33 @@
             <div class="card mt-5">
                 <div class="card-header text-center"><b>Register</b></div>
                 <div class="card-body">
-                    <form action="/password" onsubmit="return validateForm()" method="post">
+                    <form action="/register/password" method="post" id="registrationForm">
                         <div class="mb-3">
                             <label for="firstName" class="form-label">First Name</label>
-                            <input type="text" name="firstName" class="form-control" id="firstName">
-                            <div class="invalid-feedback"></div>
+                            <input type="text" name="firstName" class="form-control" id="firstName" placeholder="First Name" title="Please enter only letters" pattern="[a-zA-z\s]+" required>
                         </div>
 
                         <div class="mb-3">
                             <label for="lastName" class="form-label">Last Name</label>
-                            <input type="text" name="lastName" class="form-control" id="lastName">
-                            <div class="invalid-feedback"></div>
+                            <input type="text" name="lastName" class="form-control" id="lastName" placeholder="Last Name" title="Please enter only letters" pattern="[a-zA-z\s]+" required>
                         </div>
 
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
-                            <input type="email" name="email" class="form-control" id="email" required>
+                            <input type="email" name="email" class="form-control" id="email" placeholder="name@example.com" required>
                             <div class="invalid-feedback"></div>
                         </div>
 
                         <div class="text-center">
                             <button type="submit" class="btn btn-dark mb-3">Submit</button>
                         </div>
-
                     </form>
                 </div>
             </div>
-            <img src="public/images/LoadingGif.gif" id="loadingGif" class="img-responsive mx-auto d-block mt-3 d-none" width="100" height="100" alt="Loading gif">
+            <img src="/images/LoadingGif.gif" id="loadingGif" class="img-responsive mx-auto d-block mt-3 d-none" width="100" height="100" alt="Loading gif">
         </div>
     </div>
 </div>
-
-
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj" crossorigin="anonymous"></script>
 </body>
