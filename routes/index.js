@@ -1,4 +1,6 @@
 var express = require('express');
+const Cookies = require("cookies");
+const keys = ['keyboard cat'];
 var router = express.Router();
 
 /* GET home page. */
@@ -14,7 +16,22 @@ router.get('/', function(req, res, next) {
   //   else
   //     res.render('index');
   // }
-  res.render('login', {message:""});
+
+  if(!req.query.isRegistered)
+    res.render('login', {message:""});
+  else
+    res.render('login', {message:"You have successfully registered!"});
+
+  // const cookies = new Cookies(req, res, { keys: keys });
+  //
+  // const isRegistered = cookies.get('IsRegistered', { signed: true })
+  //
+  // if(!isRegistered)
+  //   res.render('login', {message:""});
+  // else {
+  //   cookies.set('IsRegistered', {expires: Date.now()});
+  //   res.render('login', {message: "You have successfully registered!"});
+  // }
 });
 
 router.post('/index', function(req, res, next) {

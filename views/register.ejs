@@ -7,10 +7,25 @@
     <script src="/js/registerFunc.js"></script>
 </head>
 <body>
+<div class="modal fade" id="modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary bg-opacity-75 text-light">
+                <h5 class="modal-title" id="ModalLabel"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="container-fluid">
     <div class="row">
         <div class="col-4"></div>
         <div class="col-4">
+            <p class="text-center mt-4 bg-danger bg-opacity-25 rounded"><%= message%></p>
             <div class="card mt-5">
                 <div class="card-header text-center"><b>Register</b></div>
                 <div class="card-body">

@@ -15,16 +15,11 @@ module.exports = class User {
     }
 
     isValid() {
-        let isValid = true;
-
-        isValid = isValid && (/[a-zA-z\s]+/.test(this.firstName));
-        isValid = isValid && (/[a-zA-z\s]+/.test(this.lastName));
-        isValid = isValid && (/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(this.email));
-        isValid = isValid && (/[\S]*/.test(this.password));
-
-        if(!isValid){
-            throw new Error('server side validation failed!');
-        }
+        checkField(/[a-zA-z\s]+/.test(this.firstName), "First name should contain only letters and spaces!")
+        checkField(/[a-zA-z\s]+/.test(this.lastName), "Last name should contain only letters and spaces!")
+        checkField(/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(this.email),
+            "Valid email: name@example.com")
+        checkField(/[\S]{8,}/.test(this.password), "The password must be at least 8 characters long and not contain spaces!")
     }
 };
 
@@ -38,3 +33,8 @@ module.exports.isEmailExist = function isEmailExist(email) {
     return false;
 };
 
+let checkField = (isValid, message) => {
+    if(!isValid){
+        throw new Error(message);
+    }
+};

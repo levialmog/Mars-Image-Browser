@@ -25,7 +25,11 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById("loadingGif").classList.add("d-none"); //stops the loading gif
         })
             .catch(function (error) {
-                console.log(error);
+                document.getElementById("loadingGif").classList.add("d-none"); //stops the loading gif
+                document.getElementById("ModalLabel").innerHTML = "Error";
+                document.getElementById("modalBody").innerHTML = `<p>The server is not available right now, please try again later.</p>`;
+                let myModal = new bootstrap.Modal(document.getElementById('modal'), {});
+                myModal.show();
             });
     }
 });
