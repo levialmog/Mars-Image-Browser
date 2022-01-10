@@ -1,4 +1,4 @@
-const User = require("../modules/validationModule");
+const ValidationModule = require("../modules/validationModule");
 const Cookies = require('cookies');
 const keys = ['keyboard cat']
 const db = require('../models'); //contain the Contact model, which is accessible via db.Contact
@@ -26,9 +26,9 @@ exports.postPassword = (req, res, next) => {
     }
 
     res.render('password', {firstName:req.body.firstName,
-                            lastName:req.body.lastName,
-                            email:req.body.email,
-                            title:"Register", scriptSrc:"/js/passwordFunc.js"});
+        lastName:req.body.lastName,
+        email:req.body.email,
+        title:"Register", scriptSrc:"/js/passwordFunc.js"});
 };
 
 exports.postSaveUser = (req, res, next) => {
@@ -43,7 +43,7 @@ exports.postSaveUser = (req, res, next) => {
         const [firstName, lastName, email, password] = [req.body.firstName.trim().toLowerCase(), req.body.lastName.trim().toLowerCase(), req.body.email.trim().toLowerCase(), req.body.password.trim()];
 
         try {
-            User.isUserValid(firstName, lastName, email, password);
+            ValidationModule.isUserValid(firstName, lastName, email, password);
         } catch (e) {
             req.session.message = e.message;
             res.redirect('/register/details');
@@ -55,6 +55,7 @@ exports.postSaveUser = (req, res, next) => {
                     return db.Contact.create({firstName, lastName, email, password})
                         .then((contact) => {
                             req.session.message = "You have successfully registered!";
+                            req.session.messageColor = "bg-success"
                             res.redirect('/');
                         })
                         .catch((err) => {

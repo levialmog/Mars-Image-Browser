@@ -1,10 +1,109 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Index</title>
-    <link rel='stylesheet' href='/stylesheets/style.css' />
-  </head>
-  <body>
-    <h1>The Website!!!</h1>
-  </body>
-</html>
+<%- include('includes/head.ejs') %>
+
+<div class="modal fade" id="modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-secondary bg-opacity-75 text-light">
+        <h5 class="modal-title" id="ModalLabel"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col">
+      <img src="images/Mars.jpg" class="w-50 mx-auto d-block img-responsive" alt="Mars">
+      <h1 class="text-center">Mars Image Browser</h1>
+      <p class="text-center">Browse NASA Mars images and save your preferred ones</p>
+      <div class="text-center">
+        <button class="btn btn-secondary" id="detailsModalBtn">Who we are</button>
+        <h5 class="mt-4">Hello, <%= firstName%> <%= lastName%> !</h5>
+      </div>
+      <img src="images/LoadingGif.gif" id="loadingGif1" class="img-responsive mx-auto d-block mt-3 d-none" width="100" height="100" alt="Loading gif">
+    </div>
+  </div>
+
+  <div id="activePart" class="d-none">
+    <div class="row">
+      <div class="col-12 col-md-6 mt-4">
+        <h4 class="bg-secondary bg-opacity-50 rounded p-2 text-secondary">Search for Images</h4>
+        <form class="needs-validation" novalidate>
+          <div class="mb-3">
+            <label for="date" class="form-label">Date (YYYY-MM-DD) or Sol</label>
+            <input type="text" class="form-control" id="date" required>
+            <div class="invalid-feedback"></div>
+          </div>
+          <div class="mb-3">
+            <label for="mission" class="form-label">Select mission</label>
+            <select class="form-select" id="mission" required>
+              <option selected value="">Choose a mission</option>
+              <option value="Curiosity">Curiosity</option>
+              <option value="Opportunity">Opportunity</option>
+              <option value="Spirit">Spirit</option>
+            </select>
+            <div class="invalid-feedback"></div>
+          </div>
+          <div class="mb-3">
+            <label for="camera" class="form-label">Select camera</label>
+            <select class="form-select" id="camera" required>
+              <option selected value="">Choose a camera</option>
+              <option value="FHAZ">FHAZ</option>
+              <option value="RHAZ">RHAZ</option>
+              <option value="MAST">MAST</option>
+              <option value="CHEMCAM">CHEMCAM</option>
+              <option value="MAHLI">MAHLI</option>
+              <option value="MARDI">MARDI</option>
+              <option value="NAVCAM">NAVCAM</option>
+              <option value="PANCAM">PANCAM</option>
+              <option value="MINITES">MINITES</option>
+            </select>
+            <div class="invalid-feedback"></div>
+          </div>
+          <button id="search" type="button" class="btn btn-outline-secondary">Search</button>
+          <button id="clear" type="reset" class="btn btn-outline-secondary">Clear</button>
+          <img src="images/LoadingGif.gif" id="loadingGif2" class="img-responsive d-none" width="40" height="40" alt="Loading gif">
+        </form>
+      </div>
+
+      <div class="col-12 col-md-6 mt-4">
+        <h4 class="bg-secondary bg-opacity-50 rounded p-2 text-secondary">Saved Images</h4>
+        <button id="startSlideShow" class="btn btn-outline-secondary">Start slide show</button>
+        <button id="stopSlideShow" class="btn btn-outline-secondary">Stop slide show</button>
+        <ol id="savedList"></ol>
+      </div>
+    </div>
+
+    <div class="row mt-4">
+      <div class="col-2 col-md-4"></div>
+      <div class="col-8 col-md-4 d-none" id="carouselPlace">
+        <div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
+          <div class="carousel-inner" id="carousel-inner"></div>
+          <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleControls" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+          </button>
+          <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleControls" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mt-4">
+      <div class="col">
+        <h4 class="bg-secondary bg-opacity-50 rounded p-2 text-secondary">Search Results</h4>
+        <div class="row p-2" id="results">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('includes/end.ejs') %>
