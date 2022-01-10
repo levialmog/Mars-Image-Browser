@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const isExist = function (email) {
         document.getElementById("loadingGif").classList.remove("d-none"); //starts the loading gif
-        fetch(`/register/isUserExist/${email.value}`)
+        fetch(`/api/isUserExist/${email.value}`)
             .then(function (response) {
                 return response.json();
             }).then(function (data) {

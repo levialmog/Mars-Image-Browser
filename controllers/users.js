@@ -1,50 +1,72 @@
-const User = require("../models/user");
+const User = require("../modules/validationModule");
 const Cookies = require('cookies');
 const keys = ['keyboard cat']
+const db = require('../models'); //contain the Contact model, which is accessible via db.Contact
 
 exports.getRegister = (req, res, next) => {
-    res.render('register', {message: ""});
+    let message;
+    if (!req.session.message) {
+        req.session.message = "";
+        message = "";
+    }
+    else {
+        message = req.session.message;
+        req.session.message = "";
+    }
+
+    res.render('register', {title:"Register", scriptSrc:"/js/registerFunc.js", message: message});
 };
 
 exports.postPassword = (req, res, next) => {
     const cookies = new Cookies(req, res, { keys: keys });
-
     const registrationStarted = cookies.get('RegistrationStarted', { signed: true })
 
     if (!registrationStarted) {
-        cookies.set('RegistrationStarted', new Date().toISOString(), { signed: true, maxAge: 60*1000 });
+        cookies.set('RegistrationStarted', new Date().toISOString(), { signed: true, maxAge: 10*1000 });
     }
 
     res.render('password', {firstName:req.body.firstName,
-        lastName:req.body.lastName,
-        email:req.body.email});
+                            lastName:req.body.lastName,
+                            email:req.body.email,
+                            title:"Register", scriptSrc:"/js/passwordFunc.js"});
 };
 
 exports.postSaveUser = (req, res, next) => {
     const cookies = new Cookies(req, res, { keys: keys });
-
     const registrationStarted = cookies.get('RegistrationStarted', { signed: true })
 
-    if(!registrationStarted)
-        res.render('register', {message: "Please complete the registration within a minute!"});
+    if(!registrationStarted) {
+        req.session.message = "Please complete the registration within a minute!";
+        res.redirect('/register/details');
+    }
     else {
-        const user = new User(req.body.firstName.trim().toLowerCase(), req.body.lastName.trim().toLowerCase(), req.body.email.trim().toLowerCase(), req.body.password.trim());
+        const [firstName, lastName, email, password] = [req.body.firstName.trim().toLowerCase(), req.body.lastName.trim().toLowerCase(), req.body.email.trim().toLowerCase(), req.body.password.trim()];
 
         try {
-            user.isValid();
-            if (User.isEmailExist(user.email)) {
-                throw new Error("There is a user with the same email, please try again with another email");
-            }
-            user.save();
-            res.redirect('/?isRegistered= true')
-            //cookies.set('IsRegistered', new Date().toISOString(), { signed: true});
+            User.isUserValid(firstName, lastName, email, password);
         } catch (e) {
-            res.render('register', {message: e});
+            req.session.message = e.message;
+            res.redirect('/register/details');
         }
-    }
-};
 
-exports.getIsUserExist = (req, res, next) => {
-    let email = req.params.email.toLowerCase();
-    res.json({isExist: User.isEmailExist(email)});
+        return db.Contact.findOne({where: {email: email}})
+            .then((contacts) => {
+                if (!contacts) {
+                    return db.Contact.create({firstName, lastName, email, password})
+                        .then((contact) => {
+                            req.session.message = "You have successfully registered!";
+                            res.redirect('/');
+                        })
+                        .catch((err) => {
+                            console.log('There was an error creating a contact', JSON.stringify(contact))
+                            return res.status(400).send(err)
+                        })
+                } else
+                    throw new Error("There is a user with the same email, please try again with another email");
+            })
+            .catch((e) => {
+                req.session.message = e.message;
+                res.redirect('/register/details');
+            });
+    }
 };
