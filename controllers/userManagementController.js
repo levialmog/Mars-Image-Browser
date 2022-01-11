@@ -22,7 +22,7 @@ exports.postPassword = (req, res, next) => {
     const registrationStarted = cookies.get('RegistrationStarted', { signed: true })
 
     if (!registrationStarted) {
-        cookies.set('RegistrationStarted', new Date().toISOString(), { signed: true, maxAge: 10*1000 });
+        cookies.set('RegistrationStarted', new Date().toISOString(), { signed: true, maxAge: 60*1000 });
     }
 
     res.render('password', {firstName:req.body.firstName,
@@ -49,20 +49,14 @@ exports.postSaveUser = (req, res, next) => {
             res.redirect('/register/details');
         }
 
-        return db.Contact.findOne({where: {email: email}})
-            .then((contacts) => {
-                if (!contacts) {
-                    return db.Contact.create({firstName, lastName, email, password})
-                        .then((contact) => {
-                            req.session.message = "You have successfully registered!";
-                            req.session.messageColor = "bg-success"
-                            res.redirect('/');
-                        })
-                        .catch((err) => {
-                            console.log('There was an error creating a contact', JSON.stringify(contact))
-                            return res.status(400).send(err)
-                        })
-                } else
+        return db.User.findOrCreate({where: {firstName, lastName, email, password}})
+            .then(([user, isCreated]) => {
+                if (isCreated) {
+                    req.session.message = "You have successfully registered!";
+                    req.session.messageColor = "bg-success"
+                    res.redirect('/login');
+                }
+                else
                     throw new Error("There is a user with the same email, please try again with another email");
             })
             .catch((e) => {

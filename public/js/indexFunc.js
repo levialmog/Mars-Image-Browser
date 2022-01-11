@@ -1,14 +1,9 @@
 "use strict";
 
+//private key for NASA api
 const APIKEY = 'eT0Wm32cRHEMNwDhZGRtfeoevnTNnHrm9fCDtRWx';
 
-/**
- * A validation module that returns functions that we use to perform validation during the program.
- * @type {{isDateOrSol: (function(*): {isValid: boolean, message: string, type: *}), isNotEmpty: (function(*): {isValid: boolean, message: string}), isInRange: (function(*): {isValid: boolean, message: string}), status: ((function(*=): (Promise<*>))|*)}}
- */
-const validationModule = (function() {
-    //private key for NASA api
-
+const manifestModule = (function() {
     //An object that holds the dates of the missions that will be used for validation
     const validationDates = {'Curiosity' : {}, 'Opportunity' : {}, 'Spirit' : {}};
 
@@ -61,6 +56,59 @@ const validationModule = (function() {
         }
     }
 
+    function getSavedImageList() {
+        fetch('/api/savedImageList')
+            .then(status)
+            .then(function (response) {
+                return response.json();
+            }).then(function (images) {
+            for (let image of images) {
+                document.getElementById("savedList").insertAdjacentHTML('beforeend', imageModule.toHtmlSaved(image));
+                document.getElementById(`delete-btn${image.imageId}`).addEventListener('click', (event) => deleteImage(event, image));
+                imageModule.getCarouselImage(image);
+            }
+            document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+            })
+            .catch(function (error) {
+                document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+                validationModule.popUpModal("Error", `<p>The server is not available right now, please try again later.</p>`);
+            });
+    }
+
+    const deleteImage = (event, image) => {
+        document.getElementById("loadingGif2").classList.remove("d-none"); //starts the loading gif
+        fetch(`/api/deleteImage/${image.imageId}`, {method:'DELETE'})
+            .then(manifestModule.status)
+            .then(function (response) {
+                return response.json();
+            }).then(function (data) {
+            if (data.isDeleted)
+                document.getElementById("savedList").removeChild(event.target.parentElement);
+            else {
+                validationModule.popUpModal("Error", `<p>For some reason, the image was not deleted.</p>`);
+            }
+            document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+        })
+            .catch(function (error) {
+                document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+                validationModule.popUpModal("Error", `<p>The server is not available right now, please try again later.</p>`);
+            });
+    }
+
+    return {
+        status : status,
+        getValidationDates : getValidationDates,
+        getSavedImageList : getSavedImageList,
+        deleteImage : deleteImage,
+        validationDates : validationDates
+    }
+}) ();
+
+/**
+ * A validation module that returns functions that we use to perform validation during the program.
+ * @type {{isDateOrSol: (function(*): {isValid: boolean, message: string, type: *}), isNotEmpty: (function(*): {isValid: boolean, message: string}), isInRange: (function(*): {isValid: boolean, message: string}), status: ((function(*=): (Promise<*>))|*)}}
+ */
+const validationModule = (function() {
     /**
      * The function checks whether the value of the element is valid - i.e. not empty.
      * @param element - The element whose value we want to test.
@@ -139,10 +187,10 @@ const validationModule = (function() {
 
         if (element.type === 'earth_date') {
             element.type = 'date';
-            maxValidationDate = validationDates[element.mission].max_date;
-            minValidationDate = validationDates[element.mission].landing_date;
+            maxValidationDate = manifestModule.validationDates[element.mission].max_date;
+            minValidationDate = manifestModule.validationDates[element.mission].landing_date;
         } else if (element.type === 'sol') {
-            maxValidationDate = validationDates[element.mission].max_sol;
+            maxValidationDate = manifestModule.validationDates[element.mission].max_sol;
             minValidationDate = "1";
         }
 
@@ -164,11 +212,24 @@ const validationModule = (function() {
         };
     }
 
-    return{status : status,
-           getValidationDates : getValidationDates,
-           isNotEmpty : isNotEmpty,
-           isDateOrSol : isDateOrSol,
-           isInRange : isInRange}
+    /**
+     * The function produces and activates a bootstrap modal according to the title and content sent to it
+     * @param header - the wanted header content.
+     * @param body - the wanted body content.
+     */
+    const popUpModal = function (header, body) {
+        document.getElementById("ModalLabel").innerHTML = header;
+        document.getElementById("modalBody").innerHTML = body;
+        let myModal = new bootstrap.Modal(document.getElementById('modal'), {});
+        myModal.show();
+    }
+
+    return {
+        isNotEmpty : isNotEmpty,
+        isDateOrSol : isDateOrSol,
+        isInRange : isInRange,
+        popUpModal : popUpModal
+    }
 }) ();
 
 /**
@@ -176,143 +237,75 @@ const validationModule = (function() {
  * @type {{}} - returns the classes object.
  */
 const imageModule = (function() {
-    //an object that holds all the classes of the module
-    let classes = {};
-
     /**
-     * A class that represents an image in the program. The object holds properties of the image.
-     * @type {classes.Image}
+     * The function creates a html card display for the image.
+     * @returns {string} - A string that contains the html commands that build the image card display.
      */
-    classes.Image = class Image {
-        constructor(date, sol, camera, mission, id, url) {
-            this.date = date;
-            this.sol = sol;
-            this.camera = camera;
-            this.mission = mission;
-            this.id = id;
-            this.url = url;
-        }
-
-        /**
-         * The function creates a html card display for the image.
-         * @returns {string} - A string that contains the html commands that build the image card display.
-         */
-        toHtmlCard() {
-            return`
+    const toHtmlCard = function(image) {
+        return `
             <div class="col-12 col-md-6 col-lg-4 mt-2">
                 <div class="card">
-                    <img src=${this.url} class="card-img-top p-1" alt="Mars">
+                    <img src=${image.img_src} class="card-img-top p-1" alt="Mars">
                         <div class="card-body">
-                            <p class="card-text">${this.date}<br>
-                                                 ${this.sol}<br>
-                                                 ${this.camera}<br>
-                                                 ${this.mission}</p>
-                            <button class="save-btn btn btn-outline-secondary">Save</button>
-                            <a href=${this.url} class="btn btn-secondary" target="_blank">Full size</a>
+                            <p class="card-text">${image.earth_date}<br>
+                                                 ${image.sol}<br>
+                                                 ${image.camera.name}<br>
+                                                 ${image.rover.name}</p>
+                            <button class="save-btn btn btn-outline-secondary" id="save-btn${image.id}">Save</button>
+                            <a href=${image.img_src} class="btn btn-secondary" target="_blank">Full size</a>
                         </div>
                 </div>
-            </div>`
-        }
-
-        /**
-         * The function creates a html "saved" display for the image.
-         * @returns {string} - A string that contains the html commands that build the image "saved" display.
-         */
-        toHtmlSaved() {
-            return`
-            <li><a href=${this.url} target="_blank">Image id: ${this.id}</a>
-                <p>Earth Date: 2${this.date}, Sol: ${this.sol}, Camera: ${this.camera}</p></li>`
-        }
-
-        /**
-         * The function creates a html carousel display for the image.
-         * @param divClass - the class attributes of the current image in the carousel.
-         * @returns {string} - A string that contains the html commands that build the image carousel display.
-         */
-        toHtmlCarousel(divClass){
-            return `<div class="${divClass}">
-                        <img src=${this.url} class="d-block w-100" alt="Mars">
-                        <div class="carousel-caption d-none d-md-block">
-                            <h6>${this.camera}</h6>
-                            <p>${this.date}</p>
-                            <a href=${this.url} class="btn btn-dark" target="_blank">Full size</a>
-                        </div>
-                    </div>`
-        }
+            </div>`;
     }
 
     /**
-     * A class that represents an image list in the program. The list hold Image type variables.
-     * @type {classes.ImageList}
+     * The function creates a html "saved" display for the image.
+     * @returns {string} - A string that contains the html commands that build the image "saved" display.
      */
-    classes.ImageList = class {
-        constructor() {
-            this.list = [];
-        }
-
-        /**
-         * The function adds an image to the list.
-         * @param image - The image required to add to the list.
-         */
-        add(image) {
-            this.list.push(image);
-        }
-
-        /**
-         * The function searches the image list for a requested image by its url.
-         * @param url - the url of the imaged that is looked for.
-         * @returns {*} - the image that was found, or undefined if it wasn't found.
-         */
-        search(url) {
-            return this.list.find((img) => img.url === url);
-        }
-
-        /**
-         * The function clears the list.
-         */
-        clear() {
-            this.list = [];
-        }
-
-        /**
-         * The function returns the last element of the list.
-         * @returns {*} - the last element of the list.
-         */
-        getLast() {
-            return this.list[this.list.length-1];
-        }
-
-        /**
-         * The function returns the length of the list.
-         * @returns {number} - the length of the list.
-         */
-        getLength() {
-            return this.list.length;
-        }
-
-        /**
-         * The function creates a html search results display.
-         * @returns {string} - A string that contains the html commands that build the images of the search results.
-         */
-        generateHTML() {
-            let res = "";
-            for (const img of this.list)
-                res += img.toHtmlCard();
-            return res;
-        }
+    const toHtmlSaved = function (image) {
+        return `
+            <li><a href=${image.url} target="_blank">Image id: ${image.imageId}</a>
+            <button type="button" class="btn btn-outline-danger" id="delete-btn${image.imageId}">X</button>
+            <p>Earth Date: ${image.earthDate}, Sol: ${image.sol}, Camera: ${image.camera}</p></li>`
     }
 
-    return classes;
+    /**
+     * The function creates a html carousel display for the image.
+     * @param divClass - the class attributes of the current image in the carousel.
+     * @returns {string} - A string that contains the html commands that build the image carousel display.
+     */
+    const toHtmlCarousel = function (divClass, image) {
+        return `<div class="${divClass}">
+                        <img src=${image.url} class="d-block w-100" alt="Mars">
+                        <div class="carousel-caption d-none d-md-block">
+                            <h6>${image.camera}</h6>
+                            <p>${image.earthDate}</p>
+                            <a href=${image.url} class="btn btn-dark" target="_blank">Full size</a>
+                        </div>
+                    </div>`
+    }
+
+    /**
+     * The function produces a carousel display of the last saved image.
+     * @returns {string} - the carousel display of the last saved image.
+     */
+    function getCarouselImage(image) {
+        let carouselInner = document.getElementById("carousel-inner");
+        let divClass = (carouselInner.children.length === 0) ? "carousel-item active" : "carousel-item";
+        carouselInner.insertAdjacentHTML('beforeend', toHtmlCarousel(divClass, image));
+        document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+    }
+
+    return {
+        toHtmlCard : toHtmlCard,
+        toHtmlSaved : toHtmlSaved,
+        toHtmlCarousel : toHtmlCarousel,
+        getCarouselImage : getCarouselImage,
+    }
 }) ();
 
 
 (function() {
-    //Holds the image list of search results.
-    let resultList = new imageModule.ImageList;
-
-    //Holds the image list of saved images.
-    let savedList = new imageModule.ImageList;
-
     /**
      * The function checks the user's input according to several requirements.
      * @param dateInput - The date the user entered.
@@ -371,15 +364,15 @@ const imageModule = (function() {
         document.getElementById("loadingGif2").classList.remove("d-none"); //starts the loading gif
         fetchImages(missionInput, dateType, dateInput, cameraInput)
             .then(response => {
+                let isEmpty = true;
                 for(let photo of response.photos) {
-                    resultList.add(new imageModule.Image(photo.earth_date, photo.sol, cameraInput, missionInput, photo.id, photo.img_src));
+                    isEmpty = false;
+                    document.getElementById("results").insertAdjacentHTML('beforeend', imageModule.toHtmlCard(photo));
+                    document.getElementById(`save-btn${photo.id}`).addEventListener('click', (event) =>saveImage(event, photo));
                 }
-                if (resultList.getLength() === 0)
+                if (isEmpty)
                     document.getElementById("results").innerHTML = `<h4 class="bg-danger bg-opacity-50 opacity-75 text-danger rounded p-2">No images found!</h4>`;
-                else {
-                    document.getElementById("results").innerHTML = resultList.generateHTML();
-                    attachButtonListeners("save-btn", saveImage);
-                }
+
                 document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
             })
     }
@@ -395,23 +388,13 @@ const imageModule = (function() {
     const fetchImages = async (mission, type, time, camera) => {
         try {
             let res = await fetch(`https://api.nasa.gov/mars-photos/api/v1/rovers/${mission}/photos?${type}=${time}&camera=${camera}&api_key=${APIKEY}`);
-            await validationModule.status(res);
+            await manifestModule.status(res);
             return await res.json();
         }
         catch (e){
             document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-            popUpModal("Error", `<p>NASA servers are not available right now, please try again later.</p>`);
+            validationModule.popUpModal("Error", `<p>NASA servers are not available right now, please try again later.</p>`);
         }
-    }
-
-    /**
-     * The function attaches listeners to the buttons of the wanted class with the wanted function.
-     * @param className - the wanted class name.
-     * @param func - the wanted function.
-     */
-    function attachButtonListeners(className, func) {
-        for (const b of document.getElementsByClassName(className)){
-            b.addEventListener('click', func);}
     }
 
     /**
@@ -427,54 +410,42 @@ const imageModule = (function() {
     }
 
     /**
-     * The function produces and activates a bootstrap modal according to the title and content sent to it
-     * @param header - the wanted header content.
-     * @param body - the wanted body content.
-     */
-    function popUpModal(header, body) {
-        document.getElementById("ModalLabel").innerHTML = header;
-        document.getElementById("modalBody").innerHTML = body;
-        let myModal = new bootstrap.Modal(document.getElementById('modal'), {});
-        myModal.show();
-    }
-
-    /**
-     * The function produces a carousel display of the last saved image.
-     * @returns {string} - the carousel display of the last saved image.
-     */
-    function getCarouselImage() {
-        let divClass = "carousel-item" + (savedList.getLength() === 1 ? " active" : "");
-        return savedList.getLast().toHtmlCarousel(divClass);
-    }
-
-    /**
      * The function checks that the image has not been saved already, and if not saves it in the list of saved images.
      * @param image - the image that needs to be saved.
      */
-    const saveImage = (image) => {
-        if (savedList.search(image.target.parentElement.parentElement.firstElementChild.src) === undefined) {
-            savedList.add(resultList.search(image.target.parentElement.parentElement.firstElementChild.src));
-            appendSavedImage(savedList.getLast());
-            document.getElementById("carousel-inner").insertAdjacentHTML('beforeend', getCarouselImage());
-        }
-        else {
-            popUpModal("Information", `<p>The image is already saved!</p>`);
-        }
-    }
+    const saveImage = (event, image) => {
+        let body = {imageId:image.id, url:image.img_src, earthDate:image.earth_date, sol:image.sol, camera:image.camera.name};
 
-    /**
-     * The function inserts the saved image into the HTML saved image display
-     * @param image - the saved image.
-     */
-    const appendSavedImage =  (image) => {
-        document.getElementById("savedList").insertAdjacentHTML('beforeend', image.toHtmlSaved());
+        let ajaxParams = {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        };
+        document.getElementById("loadingGif2").classList.remove("d-none"); //starts the loading gif
+        fetch('/api/saveImage', ajaxParams)
+            .then(manifestModule.status)
+            .then(function (response) {
+                return response.json();
+            }).then(function (data) {
+            if (!data.isSaved) {
+                validationModule.popUpModal("Information", `<p>The image is already saved!</p>`);
+                document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+            } else {
+                document.getElementById("savedList").insertAdjacentHTML('beforeend', imageModule.toHtmlSaved(body));
+                document.getElementById(`delete-btn${body.imageId}`).addEventListener('click', (event) => manifestModule.deleteImage(event, body));
+                imageModule.getCarouselImage(body);
+            }
+        })
+            .catch(function (error) {
+                document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+                validationModule.popUpModal("Error", `<p>The server is not available right now, please try again later.</p>`)
+            });
     }
 
     /**
      * The function clears the search results from the DOM, the resultList and the errors of the form.
      */
     function clearResults() {
-        resultList.clear();
         let results= document.getElementById("results");
         while (results.firstChild) {
             results.removeChild(results.firstChild);
@@ -486,7 +457,9 @@ const imageModule = (function() {
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        validationModule.getValidationDates();
+        manifestModule.getValidationDates();
+        manifestModule.getSavedImageList();
+
 
         let dateInput = document.getElementById('date');
         let missionInput = document.getElementById('mission');
@@ -505,12 +478,47 @@ const imageModule = (function() {
         });
 
         document.getElementById("startSlideShow").addEventListener('click', () => {
-            if(savedList.getLength() > 0)
-                document.getElementById("carouselPlace").classList.remove("d-none");
+            document.getElementById("carouselPlace").classList.remove("d-none");
         });
 
         document.getElementById("stopSlideShow").addEventListener('click', () => {
             document.getElementById("carouselPlace").classList.add("d-none");
+        });
+
+        document.getElementById("deleteAll").addEventListener('click', () => {
+            document.getElementById("loadingGif2").classList.remove("d-none"); //starts the loading gif
+            fetch(`/api/savedImageLength`)
+                .then(manifestModule.status)
+                .then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                if (data.length > 0) {
+                    fetch(`/api/deleteAll`, {method:'DELETE'})
+                        .then(manifestModule.status)
+                        .then(function (response) {
+                            return response.json();
+                        }).then(function (data) {
+                        if (data.isDeleted) {
+                            let savedList = document.getElementById("savedList");
+                            while (savedList.firstChild)
+                                savedList.removeChild(savedList.firstChild);
+                        }
+                        else {
+                            validationModule.popUpModal("Error", `<p>For some reason, the images were not deleted.</p>`);
+                        }
+                        document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+                    })
+                        .catch(function (error) {
+                            document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+                            validationModule.popUpModal("Error", `<p>The server is not available right now, please try again later.</p>`);
+                        });
+                }
+                document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+            })
+                .catch(function (error) {
+                    document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+                    validationModule.popUpModal("Error", `<p>The server is not available right now, please try again later.</p>`);
+                });
         });
 
         document.getElementById("clear").addEventListener('click', () => {
@@ -518,7 +526,7 @@ const imageModule = (function() {
         });
 
         document.getElementById("detailsModalBtn").addEventListener('click', () =>{
-            popUpModal("Who we are", `<h4>Almog Levi & Lee Levi</h4>
+            validationModule.popUpModal("Who we are", `<h4>Almog Levi & Lee Levi</h4>
                                                   <p>almogle@edu.hac.ac.il | leele@edu.hac.ac.il</p>`);
         });
     });

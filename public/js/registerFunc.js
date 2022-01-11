@@ -9,9 +9,18 @@ document.addEventListener('DOMContentLoaded', function() {
         isExist(document.getElementById("email"));
     });
 
+    function status(response) {
+        if (response.status >= 200 && response.status < 300) {
+            return Promise.resolve(response)
+        } else {
+            return Promise.reject(new Error(response.statusText))
+        }
+    }
+
     const isExist = function (email) {
         document.getElementById("loadingGif").classList.remove("d-none"); //starts the loading gif
         fetch(`/api/isUserExist/${email.value}`)
+            .then(status)
             .then(function (response) {
                 return response.json();
             }).then(function (data) {
