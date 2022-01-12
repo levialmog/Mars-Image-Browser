@@ -3,6 +3,34 @@
 //private key for NASA api
 const APIKEY = 'eT0Wm32cRHEMNwDhZGRtfeoevnTNnHrm9fCDtRWx';
 
+const macrosModule = (function(){
+    const NASAServerError = "NASA servers are not available right now, please try again later.";
+    const imagesDeleteError = "For some reason, the images were not deleted.";
+    const imageDeleteError = "For some reason, the image was not deleted.";
+    const imageSavedError = "The image is already saved!";
+    const serverError = "The server is not available right now, please try again later.";
+    const inputRequired = "Input is required here";
+    const dateRequired = "Please enter a SOL number or a valid date";
+    const missionRequired = "The mission you've selected requires a";
+    const serverProblem = "There is a problem, please try again.";
+
+    return{
+        NASAServerError : NASAServerError,
+        imagesDeleteError : imagesDeleteError,
+        imageDeleteError : imageDeleteError,
+        imageSavedError : imageSavedError,
+        serverError : serverError,
+        inputRequired : inputRequired,
+        dateRequired : dateRequired,
+        missionRequired : missionRequired,
+        serverProblem : serverProblem
+    }
+}) ();
+
+/**
+ *
+ * @type {{validationDates: {Curiosity: {}, Opportunity: {}, Spirit: {}}, getValidationDates: getValidationDates, deleteImage: deleteImage, getSavedImageList: getSavedImageList, status: ((function(*=): (Promise<never>|Promise<*>))|*)}}
+ */
 const manifestModule = (function() {
     //An object that holds the dates of the missions that will be used for validation
     const validationDates = {'Curiosity' : {}, 'Opportunity' : {}, 'Spirit' : {}};
@@ -35,7 +63,10 @@ const manifestModule = (function() {
             return {'landing_date' : landing_date, 'max_date' : max_date, 'max_sol' : max_sol};
         }
         catch (e){
-            document.getElementById("activePart").innerHTML =  `<h3 class="text-center mt-2">NASA servers are not available right now, please try again later.</h3>`;
+            document.getElementById("activePart").innerHTML =  `<h3 class="text-center mt-2">${macrosModule.NASAServerError}</h3>`;
+            document.getElementById("loadingGif1").classList.add("d-none"); //stops the loading gif
+            document.getElementById("activePart").classList.remove("d-none");
+            throw new Error();
         }
     }
 
@@ -46,22 +77,28 @@ const manifestModule = (function() {
     function getValidationDates() {
         document.getElementById("loadingGif1").classList.remove("d-none"); //starts the loading gif
         for (const mission in validationDates){
-            fetchData(mission).then((data)=> {
-                validationDates[mission] = data;
-                if(validationDates.Spirit.length !== 0) {
+            fetchData(mission)
+                .then((data)=> {
+                    validationDates[mission] = data;
+                    if(validationDates.Spirit.length !== 0) {
+                        document.getElementById("loadingGif1").classList.add("d-none"); //stops the loading gif
+                        document.getElementById("activePart").classList.remove("d-none");
+                    }
+                })
+                .catch(function(e){
                     document.getElementById("loadingGif1").classList.add("d-none"); //stops the loading gif
-                    document.getElementById("activePart").classList.remove("d-none");
-                }
-            })
+                })
         }
     }
 
     function getSavedImageList() {
+        document.getElementById("loadingGif2").classList.remove("d-none"); //stops the loading gif
         fetch('/api/savedImageList')
             .then(status)
             .then(function (response) {
                 return response.json();
             }).then(function (images) {
+            validationModule.checkServerError(images);
             for (let image of images) {
                 document.getElementById("savedList").insertAdjacentHTML('beforeend', imageModule.toHtmlSaved(image));
                 document.getElementById(`delete-btn${image.imageId}`).addEventListener('click', (event) => deleteImage(event, image));
@@ -70,8 +107,7 @@ const manifestModule = (function() {
             document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
             })
             .catch(function (error) {
-                document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-                validationModule.popUpModal("Error", `<p>The server is not available right now, please try again later.</p>`);
+                window.location.replace('/log/logout');
             });
     }
 
@@ -82,16 +118,20 @@ const manifestModule = (function() {
             .then(function (response) {
                 return response.json();
             }).then(function (data) {
-            if (data.isDeleted)
+            validationModule.checkServerError(data);
+            if (data.isDeleted) {
                 document.getElementById("savedList").removeChild(event.target.parentElement);
+                document.getElementById(`carousel${image.imageId}`).remove();
+            }
             else {
-                validationModule.popUpModal("Error", `<p>For some reason, the image was not deleted.</p>`);
+                validationModule.popUpModal("Error", `<p>${macrosModule.imageDeleteError}.</p>`);
             }
             document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+
         })
             .catch(function (error) {
                 document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-                validationModule.popUpModal("Error", `<p>The server is not available right now, please try again later.</p>`);
+                validationModule.popUpModal("Error", `<p>${macrosModule.serverError}</p>`);
             });
     }
 
@@ -118,7 +158,7 @@ const validationModule = (function() {
     const isNotEmpty = function (element)  {
         return  {
             isValid: (element.value.length !== 0),
-            message: 'Input is required here'
+            message: macrosModule.inputRequired
         };
     }
 
@@ -166,7 +206,7 @@ const validationModule = (function() {
 
         return  {
             isValid: v,
-            message: 'Please enter a SOL number or a valid date',
+            message: macrosModule.dateRequired,
             type : type
         };
     }
@@ -208,7 +248,7 @@ const validationModule = (function() {
 
         return {
             isValid: v,
-            message: `The mission you've selected requires a ${element.type} ${limit} ${limitDate}`
+            message: `${macrosModule.missionRequired} ${element.type} ${limit} ${limitDate}`
         };
     }
 
@@ -224,11 +264,22 @@ const validationModule = (function() {
         myModal.show();
     }
 
+    const checkServerError = function (data) {
+        if(data.isLoggedIn === false) {
+            window.location.replace('/');
+        }
+
+        if(data.isDbError) {
+            popUpModal("ERROR", `<p>${macrosModule.serverProblem}</p>`);
+        }
+    }
+
     return {
         isNotEmpty : isNotEmpty,
         isDateOrSol : isDateOrSol,
         isInRange : isInRange,
-        popUpModal : popUpModal
+        popUpModal : popUpModal,
+        checkServerError : checkServerError
     }
 }) ();
 
@@ -275,7 +326,7 @@ const imageModule = (function() {
      * @returns {string} - A string that contains the html commands that build the image carousel display.
      */
     const toHtmlCarousel = function (divClass, image) {
-        return `<div class="${divClass}">
+        return `<div class="${divClass}" id="carousel${image.imageId}">
                         <img src=${image.url} class="d-block w-100" alt="Mars">
                         <div class="carousel-caption d-none d-md-block">
                             <h6>${image.camera}</h6>
@@ -393,7 +444,8 @@ const imageModule = (function() {
         }
         catch (e){
             document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-            validationModule.popUpModal("Error", `<p>NASA servers are not available right now, please try again later.</p>`);
+            console.log(macrosModule.NASAServerError)
+            validationModule.popUpModal("Error", `<p>${macrosModule.NASAServerError}</p>`);
         }
     }
 
@@ -427,18 +479,19 @@ const imageModule = (function() {
             .then(function (response) {
                 return response.json();
             }).then(function (data) {
+            validationModule.checkServerError(data);
             if (!data.isSaved) {
-                validationModule.popUpModal("Information", `<p>The image is already saved!</p>`);
-                document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+                validationModule.popUpModal("Information", `<p>${macrosModule.imageSavedError}</p>`);
             } else {
                 document.getElementById("savedList").insertAdjacentHTML('beforeend', imageModule.toHtmlSaved(body));
                 document.getElementById(`delete-btn${body.imageId}`).addEventListener('click', (event) => manifestModule.deleteImage(event, body));
                 imageModule.getCarouselImage(body);
             }
+            document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
         })
             .catch(function (error) {
                 document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-                validationModule.popUpModal("Error", `<p>The server is not available right now, please try again later.</p>`)
+                validationModule.popUpModal("Error", `<p>${macrosModule.serverError}</p>`)
             });
     }
 
@@ -492,37 +545,48 @@ const imageModule = (function() {
                 .then(function (response) {
                     return response.json();
                 }).then(function (data) {
+                validationModule.checkServerError(data);
                 if (data.length > 0) {
                     fetch(`/api/deleteAll`, {method:'DELETE'})
                         .then(manifestModule.status)
                         .then(function (response) {
                             return response.json();
                         }).then(function (data) {
+                        validationModule.checkServerError(data);
+                        if(data.isDbError){
+                            window.location.replace('/');
+                        }
                         if (data.isDeleted) {
                             let savedList = document.getElementById("savedList");
                             while (savedList.firstChild)
                                 savedList.removeChild(savedList.firstChild);
+                            document.getElementById('carousel-inner').innerHTML = "";
                         }
                         else {
-                            validationModule.popUpModal("Error", `<p>For some reason, the images were not deleted.</p>`);
+                            validationModule.popUpModal("Error", `<p>${macrosModule.imagesDeleteError}</p>`);
                         }
                         document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
                     })
                         .catch(function (error) {
                             document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-                            validationModule.popUpModal("Error", `<p>The server is not available right now, please try again later.</p>`);
+                            validationModule.popUpModal("Error", `<p>${macrosModule.serverError}</p>`);
                         });
                 }
                 document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
             })
                 .catch(function (error) {
                     document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-                    validationModule.popUpModal("Error", `<p>The server is not available right now, please try again later.</p>`);
+                    validationModule.popUpModal("Error", `<p>${macrosModule.serverError}</p>`);
                 });
         });
 
         document.getElementById("clear").addEventListener('click', () => {
             clearResults();
+        });
+
+        document.getElementById("logoutBtn").addEventListener('click', () => {
+            document.getElementById("loadingGif2").classList.remove("d-none"); //stops the loading gif
+            window.location.replace('/log/logout');
         });
 
         document.getElementById("detailsModalBtn").addEventListener('click', () =>{

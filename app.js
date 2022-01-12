@@ -30,9 +30,9 @@ app.use(session({
 }));
 
 app.use('/', indexRouter);
-app.use('/register', registrationRouter)
+app.use('/log', loginRouter);
 app.use('/api', apiRouter);
-app.use('', loginRouter);
+app.use('/register', registrationRouter)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

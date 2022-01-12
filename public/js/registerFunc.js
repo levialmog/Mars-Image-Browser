@@ -1,6 +1,10 @@
 "use strict";
 
 document.addEventListener('DOMContentLoaded', function() {
+
+    const serverError = "The server is not available right now, please try again later";
+    const emailError = 'This email is already in use, please choose another one';
+
     document.getElementById("registrationForm").addEventListener("submit", function (event) {
         event.preventDefault()
         document.getElementById("email").value = document.getElementById("email").value.trim();
@@ -24,21 +28,33 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function (response) {
                 return response.json();
             }).then(function (data) {
+            if(data.isDbError) {
+                popUpModal("Error", `<p>${macrosModule.serverProblem}</p>`);
+            }
             if (!data.isExist) {
                 email.classList.remove("is-invalid");
                 document.getElementById("registrationForm").submit();
             } else {
-                email.nextElementSibling.innerHTML = 'This email is already in use, please choose another one';
+                email.nextElementSibling.innerHTML = emailError;
                 email.classList.add("is-invalid");
             }
             document.getElementById("loadingGif").classList.add("d-none"); //stops the loading gif
         })
             .catch(function (error) {
                 document.getElementById("loadingGif").classList.add("d-none"); //stops the loading gif
-                document.getElementById("ModalLabel").innerHTML = "Error";
-                document.getElementById("modalBody").innerHTML = `<p>The server is not available right now, please try again later.</p>`;
-                let myModal = new bootstrap.Modal(document.getElementById('modal'), {});
-                myModal.show();
+                popUpModal("Error", `<p>${serverError}</p>`);
             });
+    }
+
+    /**
+     * The function produces and activates a bootstrap modal according to the title and content sent to it
+     * @param header - the wanted header content.
+     * @param body - the wanted body content.
+     */
+    const popUpModal = function (header, body) {
+        document.getElementById("ModalLabel").innerHTML = header;
+        document.getElementById("modalBody").innerHTML = body;
+        let myModal = new bootstrap.Modal(document.getElementById('modal'), {});
+        myModal.show();
     }
 });
