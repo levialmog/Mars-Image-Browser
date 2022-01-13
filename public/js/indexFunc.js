@@ -3,6 +3,10 @@
 //private key for NASA api
 const APIKEY = 'eT0Wm32cRHEMNwDhZGRtfeoevnTNnHrm9fCDtRWx';
 
+/**
+ * A module that holds and returns all the constant strings of the file.
+ * @type {{NASAServerError: string, dateRequired: string, serverProblem: string, imageDeleteError: string, inputRequired: string, imagesDeleteError: string, imageSavedError: string, serverError: string, missionRequired: string}}
+ */
 const macrosModule = (function(){
     const NASAServerError = "NASA servers are not available right now, please try again later.";
     const imagesDeleteError = "For some reason, the images were not deleted.";
@@ -28,8 +32,8 @@ const macrosModule = (function(){
 }) ();
 
 /**
- *
- * @type {{validationDates: {Curiosity: {}, Opportunity: {}, Spirit: {}}, getValidationDates: getValidationDates, deleteImage: deleteImage, getSavedImageList: getSavedImageList, status: ((function(*=): (Promise<never>|Promise<*>))|*)}}
+ * A module that contains functions that manage the receiving of the necessary information from the various servers for uploading the site.
+ * @type {{validationDates: {Curiosity: {}, Opportunity: {}, Spirit: {}}, getValidationDates: getValidationDates, getSavedImageList: getSavedImageList, status: ((function(*=): (Promise<never>|Promise<*>))|*)}}
  */
 const manifestModule = (function() {
     //An object that holds the dates of the missions that will be used for validation
@@ -91,6 +95,10 @@ const manifestModule = (function() {
         }
     }
 
+    /**
+     * The function sends to the server an API request to get the list of favorite photos of the current user from the database.
+     * For each image it produces its own HTML representation on the site.
+     */
     function getSavedImageList() {
         document.getElementById("loadingGif2").classList.remove("d-none"); //stops the loading gif
         fetch('/api/savedImageList')
@@ -101,7 +109,7 @@ const manifestModule = (function() {
             validationModule.checkServerError(images);
             for (let image of images) {
                 document.getElementById("savedList").insertAdjacentHTML('beforeend', imageModule.toHtmlSaved(image));
-                document.getElementById(`delete-btn${image.imageId}`).addEventListener('click', (event) => deleteImage(event, image));
+                document.getElementById(`delete-btn${image.imageId}`).addEventListener('click', (event) => imageModule.deleteImage(event, image));
                 imageModule.getCarouselImage(image);
             }
             document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
@@ -111,35 +119,10 @@ const manifestModule = (function() {
             });
     }
 
-    const deleteImage = (event, image) => {
-        document.getElementById("loadingGif2").classList.remove("d-none"); //starts the loading gif
-        fetch(`/api/deleteImage/${image.imageId}`, {method:'DELETE'})
-            .then(manifestModule.status)
-            .then(function (response) {
-                return response.json();
-            }).then(function (data) {
-            validationModule.checkServerError(data);
-            if (data.isDeleted) {
-                document.getElementById("savedList").removeChild(event.target.parentElement);
-                document.getElementById(`carousel${image.imageId}`).remove();
-            }
-            else {
-                validationModule.popUpModal("Error", `<p>${macrosModule.imageDeleteError}.</p>`);
-            }
-            document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-
-        })
-            .catch(function (error) {
-                document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-                validationModule.popUpModal("Error", `<p>${macrosModule.serverError}</p>`);
-            });
-    }
-
     return {
         status : status,
         getValidationDates : getValidationDates,
         getSavedImageList : getSavedImageList,
-        deleteImage : deleteImage,
         validationDates : validationDates
     }
 }) ();
@@ -264,6 +247,10 @@ const validationModule = (function() {
         myModal.show();
     }
 
+    /**
+     * Function checking whether the server had an error while handling the request.
+     * @param data - The information retrieved from the server.
+     */
     const checkServerError = function (data) {
         if(data.isLoggedIn === false) {
             window.location.replace('/');
@@ -288,6 +275,43 @@ const validationModule = (function() {
  * @type {{}} - returns the classes object.
  */
 const imageModule = (function() {
+
+    /**
+     * The function sends an API request to the server to delete one image from the list of the user's favorite images from the database.
+     * @param event - Pressed delete button of the requested image.
+     * @param image - The requested image.
+     */
+    const deleteImage = (event, image) => {
+        document.getElementById("loadingGif2").classList.remove("d-none"); //starts the loading gif
+        fetch(`/api/deleteImage/${image.imageId}`, {method:'DELETE'})
+            .then(manifestModule.status)
+            .then(function (response) {
+                return response.json();
+            }).then(function (data) {
+            validationModule.checkServerError(data);
+            if (data.isDeleted) {
+                document.getElementById("savedList").removeChild(event.target.parentElement);
+                let isActive = false;
+                if(document.getElementById(`carousel${image.imageId}`).classList.contains("active")){
+                    isActive = true;
+                }
+                document.getElementById(`carousel${image.imageId}`).remove();
+                if(isActive){
+                    document.getElementById("carousel-inner").firstElementChild.classList.add("active");
+                }
+            }
+            else {
+                validationModule.popUpModal("Error", `<p>${macrosModule.imageDeleteError}.</p>`);
+            }
+            document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+
+        })
+            .catch(function (error) {
+                document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+                validationModule.popUpModal("Error", `<p>${macrosModule.serverError}</p>`);
+            });
+    }
+
     /**
      * The function creates a html card display for the image.
      * @returns {string} - A string that contains the html commands that build the image card display.
@@ -323,6 +347,7 @@ const imageModule = (function() {
     /**
      * The function creates a html carousel display for the image.
      * @param divClass - the class attributes of the current image in the carousel.
+     * @param image - the image to be added.
      * @returns {string} - A string that contains the html commands that build the image carousel display.
      */
     const toHtmlCarousel = function (divClass, image) {
@@ -348,10 +373,11 @@ const imageModule = (function() {
     }
 
     return {
+        deleteImage : deleteImage,
         toHtmlCard : toHtmlCard,
         toHtmlSaved : toHtmlSaved,
         toHtmlCarousel : toHtmlCarousel,
-        getCarouselImage : getCarouselImage,
+        getCarouselImage : getCarouselImage
     }
 }) ();
 
@@ -405,7 +431,7 @@ const imageModule = (function() {
     }
 
     /**
-     * The function calls the fetchImages function, adds the pictures to the result list and creates the results display.
+     * The function calls the fetchImages function and creates the results display.
      * @param dateType - the type of date the user entered (earth date or sol).
      * @param dateInput - the date the user entered.
      * @param missionInput - The mission the user chose.
@@ -462,7 +488,9 @@ const imageModule = (function() {
     }
 
     /**
-     * The function checks that the image has not been saved already, and if not saves it in the list of saved images.
+     * The function checks that the image has not been saved already, and if not saves it Sends an API request to the
+     * server to save it to the current user's favorite list in the database.
+     * @param event - Pressed delete button of the requested image.
      * @param image - the image that needs to be saved.
      */
     const saveImage = (event, image) => {
@@ -484,7 +512,7 @@ const imageModule = (function() {
                 validationModule.popUpModal("Information", `<p>${macrosModule.imageSavedError}</p>`);
             } else {
                 document.getElementById("savedList").insertAdjacentHTML('beforeend', imageModule.toHtmlSaved(body));
-                document.getElementById(`delete-btn${body.imageId}`).addEventListener('click', (event) => manifestModule.deleteImage(event, body));
+                document.getElementById(`delete-btn${body.imageId}`).addEventListener('click', (event) => imageModule.deleteImage(event, body));
                 imageModule.getCarouselImage(body);
             }
             document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
@@ -509,6 +537,48 @@ const imageModule = (function() {
         }
     }
 
+    /**
+     * The function sends an API request to the server to delete the list of current user's favorite images in the database.
+     */
+    function deleteAllImages() {
+        document.getElementById("loadingGif2").classList.remove("d-none"); //starts the loading gif
+        fetch(`/api/savedImageLength`)
+            .then(manifestModule.status)
+            .then(function (response) {
+                return response.json();
+            }).then(function (data) {
+            validationModule.checkServerError(data);
+            if (data.length > 0) {
+                fetch(`/api/deleteAll`, {method: 'DELETE'})
+                    .then(manifestModule.status)
+                    .then(function (response) {
+                        return response.json();
+                    }).then(function (data) {
+                    validationModule.checkServerError(data);
+                    if (data.isDeleted) {
+                        let savedList = document.getElementById("savedList");
+                        while (savedList.firstChild) {
+                            savedList.removeChild(savedList.firstChild);
+                        }
+                        document.getElementById('carousel-inner').innerHTML = "";
+                    } else {
+                        validationModule.popUpModal("Error", `<p>${macrosModule.imagesDeleteError}</p>`);
+                    }
+                    document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+                })
+                    .catch(function (error) {
+                        document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+                        validationModule.popUpModal("Error", `<p>${macrosModule.serverError}</p>`);
+                    });
+            }
+            document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+        })
+            .catch(function (error) {
+                document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
+                validationModule.popUpModal("Error", `<p>${macrosModule.serverError}</p>`);
+            });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         manifestModule.getValidationDates();
         manifestModule.getSavedImageList();
@@ -519,7 +589,7 @@ const imageModule = (function() {
         let cameraInput = document.getElementById('camera');
 
         /**
-         * attach the button handlers (search, startSlideShow, stopSlideShow, clear, detailsModalBtn)
+         * attach the button handlers (search, startSlideShow, stopSlideShow, clear, detailsModalBtn, deleteAll, logoutBtn)
          */
         document.getElementById("search").addEventListener('click', () => {
             clearResults();
@@ -539,45 +609,7 @@ const imageModule = (function() {
         });
 
         document.getElementById("deleteAll").addEventListener('click', () => {
-            document.getElementById("loadingGif2").classList.remove("d-none"); //starts the loading gif
-            fetch(`/api/savedImageLength`)
-                .then(manifestModule.status)
-                .then(function (response) {
-                    return response.json();
-                }).then(function (data) {
-                validationModule.checkServerError(data);
-                if (data.length > 0) {
-                    fetch(`/api/deleteAll`, {method:'DELETE'})
-                        .then(manifestModule.status)
-                        .then(function (response) {
-                            return response.json();
-                        }).then(function (data) {
-                        validationModule.checkServerError(data);
-                        if(data.isDbError){
-                            window.location.replace('/');
-                        }
-                        if (data.isDeleted) {
-                            let savedList = document.getElementById("savedList");
-                            while (savedList.firstChild)
-                                savedList.removeChild(savedList.firstChild);
-                            document.getElementById('carousel-inner').innerHTML = "";
-                        }
-                        else {
-                            validationModule.popUpModal("Error", `<p>${macrosModule.imagesDeleteError}</p>`);
-                        }
-                        document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-                    })
-                        .catch(function (error) {
-                            document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-                            validationModule.popUpModal("Error", `<p>${macrosModule.serverError}</p>`);
-                        });
-                }
-                document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-            })
-                .catch(function (error) {
-                    document.getElementById("loadingGif2").classList.add("d-none"); //stops the loading gif
-                    validationModule.popUpModal("Error", `<p>${macrosModule.serverError}</p>`);
-                });
+            deleteAllImages();
         });
 
         document.getElementById("clear").addEventListener('click', () => {

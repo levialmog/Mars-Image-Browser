@@ -43,8 +43,7 @@ exports.postHome = (req, res, next) => {
                         req.session.firstName = contact.firstName;
                         req.session.lastName = contact.lastName;
                         req.session.email = contact.email;
-                        res.render('index', {title:marsTitle, scriptSrc:"/js/indexFunc.js",
-                            firstName:req.session.firstName, lastName:req.session.lastName});
+                        res.redirect('/');
                     } else {
                         req.session.message = "Incorrect password!";
                         req.session.messageColor = "bg-danger"
